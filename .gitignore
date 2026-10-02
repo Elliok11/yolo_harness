@@ -1,0 +1,23 @@
+# Python 虚拟环境（太大，别人自己装）
+venv/
+
+# 模型权重文件（不上传）
+*.pt
+
+# Python 缓存
+__pycache__/
+*.pyc
+
+# YOLO 运行结果
+runs/
+
+# 识别输出结果和日志（运行时会自己生成）
+output_results/
+logs/
+
+# 临时图片
+temp_images/
+
+# Windows 系统文件
+Thumbs.db
+Desktop.ini
