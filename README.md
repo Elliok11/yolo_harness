@@ -66,7 +66,9 @@ python harness.py
 📷 发现 3 张新图片
 正在识别：日常场景图 (4).png
 ✅ 识别完成，检测到 17 个目标，结果已保存
-3️⃣ 摄像头实时监控模式（harness_camera.py）
+
+
+### 3️⃣ 摄像头实时监控模式（harness_camera.py）
 连接摄像头，实时捕获画面并识别。
 
 ```bash
@@ -98,11 +100,18 @@ yolo_test/
 ├── logs/                   # 运行日志
 │   └── harness_*.log
 └── venv/                   # Python 虚拟环境
+
+
 🛠️ 技术栈
-Python 3.x
+
+Python 3.11.5
+
 Ultralytics YOLOv8
-YOLOv8n 模型（轻量级，适合实时检测）
+
+YOLOv8n 模型
+
 OpenCV（摄像头视频流处理）
+
 📦 安装与运行
 环境准备
 
