@@ -41,13 +41,16 @@ python detect.py
 识别所有图片
 输出识别结果到控制台
 完成后自动结束
-2️⃣ 文件夹监控模式（harness.py）
+
+
+### 2️⃣ 文件夹监控模式（harness.py）
+
 持续监控文件夹，自动发现并识别新图片。
 
-
+```bash
 python harness.py
 
-
+```
 特点：
 
 每 5 秒自动检查新图片
@@ -55,6 +58,7 @@ python harness.py
 结果保存为 JSON 文件
 自动记录运行日志
 按 Ctrl+C 停止
+
 输出示例：
 
 [2026-10-01 18:16:43] 模型加载完成！
@@ -65,9 +69,10 @@ python harness.py
 3️⃣ 摄像头实时监控模式（harness_camera.py）
 连接摄像头，实时捕获画面并识别。
 
+```bash
 python harness_camera.py
 
-
+```
 
 特点：
 
@@ -105,7 +110,10 @@ OpenCV（摄像头视频流处理）
 
 
 # 进入项目目录
+
+```bash
 cd D:\desktop\yolo
 
+```
 
 
