@@ -21,3 +21,7 @@ temp_images/
 # Windows 系统文件
 Thumbs.db
 Desktop.ini
+
+build/
+dist/
+*.spec
