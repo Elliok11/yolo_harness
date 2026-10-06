@@ -32,6 +32,8 @@
 ```bash
 python detect.py
 
+```
+
 
 特点：
 
@@ -39,13 +41,16 @@ python detect.py
 识别所有图片
 输出识别结果到控制台
 完成后自动结束
-2️⃣ 文件夹监控模式（harness.py）
+
+
+### 2️⃣ 文件夹监控模式（harness.py）
+
 持续监控文件夹，自动发现并识别新图片。
 
-
+```bash
 python harness.py
 
-
+```
 特点：
 
 每 5 秒自动检查新图片
@@ -53,6 +58,7 @@ python harness.py
 结果保存为 JSON 文件
 自动记录运行日志
 按 Ctrl+C 停止
+
 输出示例：
 
 [2026-10-01 18:16:43] 模型加载完成！
@@ -60,12 +66,15 @@ python harness.py
 📷 发现 3 张新图片
 正在识别：日常场景图 (4).png
 ✅ 识别完成，检测到 17 个目标，结果已保存
-3️⃣ 摄像头实时监控模式（harness_camera.py）
+
+
+### 3️⃣ 摄像头实时监控模式（harness_camera.py）
 连接摄像头，实时捕获画面并识别。
 
+```bash
 python harness_camera.py
 
-
+```
 
 特点：
 
@@ -91,11 +100,18 @@ yolo_test/
 ├── logs/                   # 运行日志
 │   └── harness_*.log
 └── venv/                   # Python 虚拟环境
+
+
 🛠️ 技术栈
-Python 3.x
+
+Python 3.11.5
+
 Ultralytics YOLOv8
-YOLOv8n 模型（轻量级，适合实时检测）
+
+YOLOv8n 模型
+
 OpenCV（摄像头视频流处理）
+
 📦 安装与运行
 环境准备
 
@@ -103,7 +119,15 @@ OpenCV（摄像头视频流处理）
 
 
 # 进入项目目录
+
+```bash
 cd D:\desktop\yolo
 
+```
+# 进入venv状态
+
+```bash
+venv\Scripts\activate
+```
 
 
