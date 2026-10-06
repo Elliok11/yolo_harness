@@ -124,5 +124,10 @@ OpenCV（摄像头视频流处理）
 cd D:\desktop\yolo
 
 ```
+# 进入venv状态
+
+```bash
+venv\Scripts\activate
+```
 
 
