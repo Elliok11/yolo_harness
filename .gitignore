@@ -25,3 +25,4 @@ Desktop.ini
 build/
 dist/
 *.spec
+.env
