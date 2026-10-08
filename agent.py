@@ -79,6 +79,14 @@ SYSTEM_PROMPT = """你是一个视觉识别助手，代号"华小牛"。
 # ==================== 运行护栏（防止 AI 越跑越上瘾） ====================
 MAX_ROUNDS = 50        # 文件夹监控最多查多少轮
 MAX_DURATION = 300     # 摄像头监控最多看多少秒
+# 一轮提问里，最多允许 AI 连续调用工具几轮。
+# 原来写死 8，遇到「把文件夹里所有图都识别一遍并总结」这种活，
+# AI 可能一轮只认一张，8 轮就到了，活干一半就被打断。
+# 提到 12 给它更多余地；超了也不会丢结果（工具结果都在历史里，说「继续」就能接着干）。
+try:
+    MAX_AGENT_ROUNDS = int(os.getenv("AGENT_MAX_ROUNDS", "12"))
+except ValueError:
+    MAX_AGENT_ROUNDS = 12
 # =======================================================================
 
 # ==================== 🥇 持久记忆：AI 的记忆不再一关就没 ====================
@@ -920,7 +928,7 @@ def run_agent_turn(messages, tool_map=None):
                      note="清理了残缺的工具调用记录，避免接口报400")
         print("  ⚠️ 检测到 %d 条残缺的工具调用记录，已自动清理（避免接口报错）" % dropped)
 
-    for round_num in range(8):
+    for round_num in range(MAX_AGENT_ROUNDS):
         t_api = time.time()
         # 可选：把这次真正发出去的请求原样存一份，方便排查「记忆到底发没发出去」
         if DEBUG_DUMP_REQUEST:
@@ -947,7 +955,12 @@ def run_agent_turn(messages, tool_map=None):
 
         # 情况 1：AI 决定调用工具
         if msg.tool_calls:
-            messages.append(_to_plain(msg))  # 记住 AI 的决定（转成纯字典，才能存盘）
+            plain = _to_plain(msg)
+            # 保险：万一上游返回里缺 role，历史就会变成非法结构（接口报 422）。
+            # 正常 OpenAI/DeepSeek 返回都带 role="assistant"，但防御一下不亏。
+            if isinstance(plain, dict) and not plain.get("role"):
+                plain["role"] = "assistant"
+            messages.append(plain)  # 记住 AI 的决定（转成纯字典，才能存盘）
 
             for tool_call in msg.tool_calls:
                 func_name = tool_call.function.name
@@ -999,9 +1012,21 @@ def run_agent_turn(messages, tool_map=None):
                          took_ms=int((time.time() - t_turn) * 1000), reply=msg.content)
             return msg.content
 
-    log_decision("turn_end", rounds=8, hit_round_limit=True,
-                 took_ms=int((time.time() - t_turn) * 1000))
-    return "（这轮工具调用有点多，我先停一下。你可以再说一次，或者换个说法。）"
+    # 走到这里 = 工具调用轮数用满了，还没轮到 AI 说最终答复。
+    # 这种情况绝不能糊弄过去，因为：
+    #   · 工具已经真跑过了（可能识别了几十张图），这些结果都已经写进对话历史
+    #   · 只是 AI 没来得及做收尾总结
+    # 所以提示必须说清两件事：① 活干了一半 ② 直接说「继续」就能接着干。
+    # 早期版本这里写的是"你可以再说一次，或者换个说法"，那会误导用户重新提问，
+    # 等于把已经干完的活又做一遍。
+    note = ("（我这轮连续调用工具 %d 次，达到单轮上限，先停一下。\n"
+            "已经执行的结果都保留着，**你直接说「继续」我就接着往下做**，\n"
+            "不用重新提问或换说法。如果想让单轮能做更多事，"
+            "可以设环境变量 AGENT_MAX_ROUNDS 调大上限。）" % MAX_AGENT_ROUNDS)
+    messages.append({"role": "assistant", "content": note})   # 记进历史，下一轮能接上
+    log_decision("turn_end", rounds=MAX_AGENT_ROUNDS, hit_round_limit=True,
+                 took_ms=int((time.time() - t_turn) * 1000), reply=note)
+    return note
 
 
 if __name__ == "__main__":
