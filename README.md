@@ -15,9 +15,7 @@
 |  **对话** | 接 DeepSeek 大模型，用中文指挥它干活 |
 |  **训练** | 自己打标签 → 训练专属模型 |
 
-### 什么是 Harness？
 
-**Harness** 是让 AI 程序**自动运行、自动决策**的那层框架。
 
 | Harness 系统 |
 |---|
@@ -34,11 +32,11 @@
 
 ##  四个入口
 
-快速开始
-```
+命令符快速开始：
+```bash
 d:
 cd desktop/yolo_test
-
+venv\Scripts\activate
 
 ```
 
@@ -46,6 +44,7 @@ cd desktop/yolo_test
 
 ```bash
 python agent.py
+
 ```
 
 启动后是**菜单 + 聊天**二合一：
@@ -91,6 +90,7 @@ python agent.py
 python train_model.py --check     # 只看数据准备得怎么样，不训练
 python train_model.py             # 开始训练
 python train_model.py --resume    # 断了接着跑
+
 ```
 
 六步流水线：查依赖 → 按 8:2 分训练/验证集 → 生成 `data.yaml` →
@@ -108,6 +108,7 @@ python train_model.py --resume    # 断了接着跑
 python -m venv venv
 venv\Scripts\activate
 pip install ultralytics openai python-dotenv pandas seaborn tqdm
+
 ```
 
 ### 2. 下载 YOLO 模型
