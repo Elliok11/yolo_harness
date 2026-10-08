@@ -7,7 +7,7 @@ from ultralytics import YOLO
 
 # ================= 配置区域 =================
 MODEL_PATH = "yolov8n.pt"        # 模型文件路径
-CAMERA_ID =  "http://10.205.89.92:8080/video"
+CAMERA_ID = 0
                      # 摄像头编号（0 通常是主摄像头）
 OUTPUT_FOLDER = "output_results"  # 结果保存文件夹
 LOG_FOLDER = "logs"               # 日志文件夹
@@ -56,7 +56,6 @@ def main(camera_source=CAMERA_ID):
     """主循环"""
     print("=" * 50)
     print("📸 YOLO 摄像头 Harness 启动！")
-    print(f"📷 摄像头 ID: {CAMERA_ID}")
     print(f"💾 结果保存到：{OUTPUT_FOLDER}")
     print(f"⏱️  捕获间隔：{CAPTURE_INTERVAL} 秒")
     print("按 Ctrl+C 停止运行")

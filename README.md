@@ -1,133 +1,242 @@
-# 🚀 YOLO Harness - 自动化视觉识别系统
+# 🚀 YOLO Harness — 自动化视觉识别 + 人脸识别 + 打标签训练
 
-> 基于 YOLOv8n 的 Harness 架构演示项目 —— 让 AI 模型自动、持续、智能地运行
+> 基于 YOLOv8n 的视觉识别系统。既能让 AI 自动、持续地跑，也能自己标数据训练专属模型。
 
 ---
 
-## 📌 项目简介
+## 📌 这是什么
 
-本项目是一个基于 **YOLOv8n** 的自动化视觉识别 Harness 系统，展示了如何让 AI 模型从"手动调用"升级为"自主运行"。
+一个用**摄像头和图片做视觉识别**的项目，能力分四大块：
+
+| 模块 | 能干什么 |
+|---|---|
+| 🔍 **识别** | 认图里的物体（80 类通用物体：人、车、狗、杯子…） |
+| 🧑 **认人** | 人脸识别：认出熟人、登记陌生人、抓拍留证 |
+| 💬 **对话** | 接 DeepSeek 大模型，用中文指挥它干活 |
+| 🏷️ **训练** | 自己打标签 → 训练专属模型 |
 
 ### 什么是 Harness？
 
-**Harness（框架/平台）** 是一个让 AI 程序能够自动运行、自动决策、自动完成任务的系统。
+**Harness** 是让 AI 程序**自动运行、自动决策**的那层框架。
 
 | 普通 AI 程序 | Harness 系统 |
-|-------------|-------------|
-| 手动输入命令 → 运行一次 → 结束 | 启动后自动循环运行 |
+|---|---|
+| 手动跑一次就结束 | 启动后自动循环 |
 | 一次处理一张图 | 持续监控，自动发现新任务 |
-| 需要人工盯着 | 自主运行，只需启动 |
-| 只能识别 | 可以调用其他工具、保存结果、做决策 |
+| 需要人盯着 | 自主运行 |
+| 只能识别 | 能调工具、存结果、自己决定下一步 |
+
+本项目里 `agent.py` 的 **Agent Loop**（AI 自己决定调哪个工具）就是 harness 的核心。
+另外 `harness.py` / `harness_camera.py` 里的"定时循环"是更朴素的自动化外壳 ——
+两种"harness"含义不同，别混。
 
 ---
 
-## 🎯 核心功能
+## 🎯 四个入口
 
-本项目提供三种运行模式：
-
-### 1️⃣ 单次识别模式（detect.py）
-
-识别指定文件夹中的所有图片，适合批量处理。
+### 1️⃣ 命令行主程序 `agent.py`（推荐入口）
 
 ```bash
-python detect.py
-
+python agent.py
 ```
 
-
-特点：
-
-遍历 images/ 文件夹
-识别所有图片
-输出识别结果到控制台
-完成后自动结束
-
-
-### 2️⃣ 文件夹监控模式（harness.py）
-
-持续监控文件夹，自动发现并识别新图片。
-
-```bash
-python harness.py
+启动后是**菜单 + 聊天**二合一：
 
 ```
-特点：
-
-每 5 秒自动检查新图片
-只处理未识别过的图片（不重复）
-结果保存为 JSON 文件
-自动记录运行日志
-按 Ctrl+C 停止
-
-输出示例：
-
-[2026-10-01 18:16:43] 模型加载完成！
---- 第 1 次循环 ---
-📷 发现 3 张新图片
-正在识别：日常场景图 (4).png
-✅ 识别完成，检测到 17 个目标，结果已保存
-
-
-### 3️⃣ 摄像头实时监控模式（harness_camera.py）
-连接摄像头，实时捕获画面并识别。
-
-```bash
-python harness_camera.py
-
+  1. 单次识别（识别 images 文件夹里的图片）
+  2. 文件夹监控模式（自动识别新图片）
+  3. 摄像头监控模式（内置摄像头 / 手机摄像头）
+  4. 🎥 摄像头 + 人脸识别 + 对话
+  0. 退出
+  -----------------------------------------
+  💬 直接打中文也能用，例如：images 里有几个人？
 ```
 
-特点：
+* 敲 `1/2/3/4` → 走菜单
+* 敲中文 → 交给 AI，它自己决定调哪个工具
+* 输入 `菜单` → 随时调出菜单
 
-实时显示摄像头画面
-每 5 秒自动截取一帧并识别
-保存带识别框的图片
-同时保存 JSON 数据
-按 Q 键 或 Ctrl+C 停止
-输出文件：
+### 2️⃣ 图形界面版 `camera_gui.py`（摄像头 + 对话）
 
-output_results/frame_*.jpg —— 带识别框的截图
-output_results/result_*.json —— 识别数据
-🏗️ 项目结构
-yolo_test/
-├── harness.py              # 文件夹监控 Harness
-├── harness_camera.py       # 摄像头监控 Harness
-├── detect.py               # 单次识别脚本
-├── yolov8n.pt              # YOLO 模型文件
-├── images/                 # 输入图片文件夹
-├── output_results/         # 识别结果输出
-│   ├── result_*.json       # JSON 数据
-│   └── frame_*.jpg         # 带框图片（摄像头模式）
-├── logs/                   # 运行日志
-│   └── harness_*.log
-└── venv/                   # Python 虚拟环境
+双击 **`启动摄像头窗口.bat`**（不弹黑框）。
 
+左边实时画面，右边聊天。**这个版本才能在开摄像头的同时打字提问** ——
+因为摄像头跑在后台线程、画面是画进窗口的，不像命令行版会被 `cv2.imshow` 霸占主线程。
 
-🛠️ 技术栈
+按钮：`🤖分析当前画面` `👥现在有谁` `📷存图` `📖脸库名单` `📝存报告`
 
-Python 3.11.5
+窗口左下角还能**实时调物体识别**：开关、换模型（yolov8n / yolov8s / yolo11s）、改分辨率，选择会被记住。
 
-Ultralytics YOLOv8
+### 3️⃣ 打标签 `label_gui.py`
 
-YOLOv8n 模型
+双击 **`启动打标签.bat`**，给训练准备数据。
 
-OpenCV（摄像头视频流处理）
+* **空白处拖鼠标** = 画新框　**点框内部** = 选中后拖动　**拖角** = 改大小
+* **A/D** 翻页　**Delete** 删框　**数字 1~9** 切类别　**画完自动存盘**
+* **🤖 自动预标注** —— 先用现成模型画出它能认的，你只改错的，不用从零画
 
-📦 安装与运行
-环境准备
+存的格式是标准 YOLO txt（`类别 中心x 中心y 宽 高`，都归一化到 0~1）。
 
-
-
-
-# 进入项目目录
+### 4️⃣ 训练 `train_model.py`
 
 ```bash
-cd D:\desktop\yolo
-
+python train_model.py --check     # 只看数据准备得怎么样，不训练
+python train_model.py             # 开始训练
+python train_model.py --resume    # 断了接着跑
 ```
-# 进入venv状态
+
+六步流水线：查依赖 → 按 8:2 分训练/验证集 → 生成 `data.yaml` →
+**量老模型成绩** → 训练 → **量新模型并自动对比**，最后告诉你"到底变准了没有"。
+
+> ⚠️ **CPU 训练很慢**。参考：200 张图 × 100 轮，4 核 CPU 约 4~8 小时；有显卡则几十分钟。
+
+---
+
+## 🛠️ 环境准备
+
+### 1. 装依赖
 
 ```bash
+python -m venv venv
 venv\Scripts\activate
+pip install ultralytics openai python-dotenv pandas seaborn tqdm
 ```
 
+### 2. 下载 YOLO 模型
 
+程序会自动下载 `yolov8n.pt`。想更准可以手动下 `yolov8s.pt` / `yolo11s.pt` 放到项目根目录。
+
+实测（3 张 2848×1600 图，合计检出目标数）：
+
+| 模型 | imgsz | 检出数 | 高置信度 |
+|---|---|---|---|
+| yolov8n | 640 | 55 | 36 |
+| yolov8n | 960 | 77 | 44 |
+| **yolov8s** | **960** | **85（+55%）** | **46** |
+
+### 3. 人脸模型（要用认人功能才需要）
+
+人脸识别用的是 **OpenCV 自带的** YuNet + SFace，不用装额外库，但要下两个模型文件放进 `models/`：
+
+```
+models/face_detection_yunet_2023mar.onnx      (0.2 MB)
+models/face_recognition_sface_2021dec.onnx    (37 MB)
+```
+
+下载地址（OpenCV Zoo 官方）：
+
+```
+https://media.githubusercontent.com/media/opencv/opencv_zoo/main/models/face_detection_yunet/face_detection_yunet_2023mar.onnx
+https://media.githubusercontent.com/media/opencv/opencv_zoo/main/models/face_recognition_sface/face_recognition_sface_2021dec.onnx
+```
+
+> 注：`raw.githubusercontent.com` 在国内常连不上，用上面的 `media.` 域名。
+
+### 4. DeepSeek 密钥
+
+项目根目录建 `.env`：
+
+```
+DEEPSEEK_API_KEY=你的密钥
+```
+
+`.env` 已在 `.gitignore` 里，不会被提交。
+
+---
+
+## 🧑 人脸识别怎么工作
+
+| 步骤 | 用什么 | 说明 |
+|---|---|---|
+| 找脸在哪 | YuNet | 检出人脸框和 5 个关键点 |
+| 认这是谁 | SFace | 把脸变成 128 维特征向量 |
+| 判断同一个人 | 余弦相似度 | 超过阈值（默认 0.40）算同一人 |
+
+**实际调参时要注意的（都是实测结论）：**
+
+* **脸太小认不准** —— 小于 60 像素的脸不参与比对，画面上显示灰框 `too small`。
+  宁可说"太远"，也不要瞎认。
+* **新面孔要连续 3 帧确认才登记**（多帧投票），避免单帧误判污染脸库。
+* **"见面次数" = 走开又回来的次数**，不是被看到的帧数。离开超过 5 秒再出现才算新的一次。
+* **阈值别调太低** —— 实测 0.30 时不同人之间会误认 13%，0.363 以上才收敛到 0。默认 0.40。
+
+可调环境变量：
+
+| 变量 | 默认 | 作用 |
+|---|---|---|
+| `FACE_THRESHOLD` | 0.40 | 判定同一人的严格度 |
+| `FACE_MIN_SIZE` | 60 | 小于此像素数的脸不认 |
+| `FACE_MIN_SCORE` | 0.5 | 人脸检测置信度下限 |
+| `FACE_VOTE_FRAMES` | 3 | 新面孔要连续几帧确认 |
+| `FACE_SESSION_GAP` | 5 | 隔几秒算"离开过" |
+| `YOLO_MODEL` | yolov8n.pt | 物体识别用哪个模型 |
+| `YOLO_IMGSZ` | 640 | 识别分辨率（调大更准更慢） |
+
+---
+
+## 📁 目录结构
+
+```
+yolo_test/
+├── agent.py               # 主程序：菜单 + AI 聊天 + Agent Loop
+├── camera_gui.py          # 图形界面：摄像头 + 人脸 + 对话
+├── chat_agent.py          # 界面与 AI 之间的接线层
+├── face_tools.py          # 人脸识别（检测/认人/脸库）
+├── label_data.py          # 打标签的数据层（YOLO 格式读写）
+├── label_gui.py           # 打标签窗口
+├── train_model.py         # 训练程序
+├── yolo_tools.py          # AI 可调用的工具集
+├── detect.py              # 最早的批量识别脚本
+├── harness.py             # 文件夹监控（定时循环）
+├── harness_camera.py      # 摄像头监控（定时循环）
+├── main.py                # 最早的菜单启动器
+├── 启动摄像头窗口.bat       # 双击启动图形界面
+├── 启动打标签.bat           # 双击启动打标签
+├── models/                # 人脸模型（需自行下载，已 gitignore）
+├── labels/                # 打标签结果（已 gitignore）
+├── images/                # 输入图片（已 gitignore）
+├── output_results/        # 识别输出、脸库、对话记忆（已 gitignore）
+└── logs/                  # 运行日志、决策留痕（已 gitignore）
+```
+
+**注意：图片、模型、数据集都不在仓库里**，需要自己准备。
+
+---
+
+## 🤖 AI 能调用的 9 个工具
+
+| 工具 | 干什么 |
+|---|---|
+| `list_images` | 看 images 里有哪些图 |
+| `detect_objects` | 认一张图（含位置坐标 bbox / center / size） |
+| `detect_all_images` | 批量认完所有图 |
+| `analyze_live_frame` | 看摄像头**此刻**的画面 |
+| `run_folder_monitor` | 文件夹监控（限定轮数） |
+| `run_camera_monitor` | 摄像头监控（限定秒数） |
+| `run_camera_chat` | 摄像头 + 人脸识别 + 对话 |
+| `list_camera_devices` | 查有哪些摄像头能用 |
+| `write_report` | 把结论存成 Markdown 报告 |
+
+---
+
+## 🧠 设计上的几个坑（踩过才写进来）
+
+1. **AI 会跟自己的旧话保持一致** —— 如果记忆里存着它说"我没有记忆"，它之后会一直这么说。
+   所以被污染的记忆必须清掉，光改提示词没用。
+2. **工具调用链不能断** —— assistant 说了要调工具，就必须紧跟对应的 tool 回复，
+   否则接口直接报 400。程序启动时会自动体检并清理残缺记录。
+3. **控制台版没法和摄像头对话** —— `cv2.imshow` 必须在主线程，会挡住 `input()`。
+   要边看边聊得用图形界面版。
+4. **AI 怎么"看见"摄像头画面** —— 摄像头模式会把当前帧存成 `output_results/frame_live.jpg`，
+   AI 通过看这个文件来获取实时画面。
+5. **别用 `git add -A`** —— 项目里可能有上万张图片素材，会被整批提交进仓库。
+   `images/`、`dataset/` 都已在 `.gitignore` 里排除。
+
+---
+
+## 📄 更新日志
+
+* **最新**：接入人脸识别（YuNet + SFace）、图形界面版、打标签工具、训练程序、
+  多帧投票、小脸门槛、记忆自愈
+* 早期：接入 DeepSeek 实现 LLM 驱动的 Agent Harness（Function Calling + Agent Loop）
+* 最早：YOLOv8n 自动化视觉识别 Harness（菜单 + 文件夹监控 + 摄像头监控）

@@ -1,8 +1,18 @@
 # Python 虚拟环境（太大，别人自己装）
 venv/
 
+# 图片素材一律不进 git
+# 原因：这里放过 5000 张 COCO 图（约 780MB），一旦提交，仓库体积会永久膨胀，
+# 以后想删都得改写历史。所以整目录排除，需要图片请自己下载。
+# 注意：已经被跟踪过的老图片要先 git rm --cached 移除，否则忽略规则对它们无效。
+images/
+
 # 模型权重文件（不上传）
 *.pt
+
+# 人脸模型（YuNet 0.2MB + SFace 37MB，本地下载，别进 git）
+models/
+*.onnx
 
 # Python 缓存
 __pycache__/
@@ -17,6 +27,12 @@ logs/
 
 # 临时图片
 temp_images/
+
+# 打标签和训练产生的数据（标签、素材、数据集都可能很大，别进 git）
+labels/
+label_images/
+dataset/
+train_runs/
 
 # Windows 系统文件
 Thumbs.db
