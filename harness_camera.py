@@ -32,9 +32,26 @@ def log_message(message):
     with open(log_file, "a", encoding="utf-8") as f:
         f.write(log_text + "\n")
 
+def unique_stamp():
+    """生成一个「绝不重名」的时间戳，格式 20261008_165033_123456
+
+    为什么需要它？
+      原来只用秒级时间戳（%Y%m%d_%H%M%S），同一秒内保存两次就会同名，
+      后写的把先写的覆盖掉（图片和 JSON 都会丢）。
+      现在：① 加微秒降低撞车概率 ② 万一还撞上就加序号 _1 _2，直到不重名。
+    """
+    base = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
+    stamp = base
+    n = 1
+    while (os.path.exists(os.path.join(OUTPUT_FOLDER, f"frame_{stamp}.jpg"))
+           or os.path.exists(os.path.join(OUTPUT_FOLDER, f"result_{stamp}.json"))):
+        stamp = "%s_%d" % (base, n)
+        n += 1
+    return stamp
+
 def save_result(frame_name, detections, frame):
-    """保存识别结果：带框图片 + JSON 数据"""
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    """保存识别结果：带框图片 + JSON 数据（文件名保证唯一，不会互相覆盖）"""
+    timestamp = unique_stamp()
     
     # 保存带识别框的图片
     image_path = os.path.join(OUTPUT_FOLDER, f"frame_{timestamp}.jpg")
@@ -82,26 +99,44 @@ def main(camera_source=CAMERA_ID):
     # 进入主循环
     frame_count = 0
     captured_count = 0
-    
+    last_capture = time.time()     # 上次捕获的时刻（按真实时间算，不数帧数）
+    fps_t0 = time.time()           # 用于统计真实帧率
+    fps_frames = 0
+    real_fps = 0.0
+
     try:
         while True:
             frame_count += 1
-            
+            fps_frames += 1
+
             # 从摄像头读取一帧
             ret, frame = cap.read()
-            
+
             if not ret:
                 log_message("⚠️  无法读取摄像头画面！")
                 time.sleep(1)
                 continue
-            
-            # 每隔 CAPTURE_INTERVAL 秒捕获一次
-            if frame_count % (CAPTURE_INTERVAL * 10) == 0:  # 假设 30fps，每 5 秒约 150 帧
+
+            elapsed = time.time() - last_capture
+
+            # 每隔 CAPTURE_INTERVAL 秒捕获一次。
+            #
+            # 这里以前写的是 frame_count % (CAPTURE_INTERVAL * 10) == 0，
+            # 注释说"假设 30fps，每 5 秒约 150 帧" —— 但那是个想当然的假设：
+            #   · 摄像头实际 30fps 时：50 帧 = 约 1.7 秒就抓一次（不是 5 秒），
+            #     检测负载和产生的文件都是设定的 3 倍
+            #   · 摄像头实际 15fps 时：又变成约 3.3 秒
+            #   · 笔记本摄像头常自动降帧，实际值还会乱飘
+            # 所以改成看「真实过了多少秒」，你设 5 秒就一定是 5 秒。
+            if elapsed >= CAPTURE_INTERVAL:
+                last_capture = time.time()
                 captured_count += 1
                 timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
                 frame_name = f"frame_{timestamp}"
-                
-                log_message(f"--- 第 {captured_count} 次捕获 ---")
+
+                log_message(f"--- 第 {captured_count} 次捕获（距上次 {elapsed:.1f} 秒）---")
+                if real_fps:
+                    log_message(f"📹 摄像头实际帧率约 {real_fps:.1f} fps")
                 log_message(f"正在识别：{frame_name}")
                 
                 # 执行识别
@@ -143,7 +178,13 @@ def main(camera_source=CAMERA_ID):
             if key == ord('q'):
                 log_message("🛑 用户按 Q 键，Harness 停止运行")
                 break
-            
+
+            # 每秒统计一次真实帧率（顺便让捕获间隔的判断心里有数）
+            if time.time() - fps_t0 >= 1.0:
+                real_fps = fps_frames / (time.time() - fps_t0)
+                fps_frames = 0
+                fps_t0 = time.time()
+
     except KeyboardInterrupt:
         log_message("🛑 用户中断，Harness 停止运行")
     
