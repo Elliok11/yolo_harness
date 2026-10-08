@@ -1,30 +1,30 @@
-# 🚀 YOLO Harness — 自动化视觉识别 + 人脸识别 + 打标签训练
+#  YOLO Harness — 自动化视觉识别 + 人脸识别 + 打标签训练
 
 > 基于 YOLOv8n 的视觉识别系统。既能让 AI 自动、持续地跑，也能自己标数据训练专属模型。
 
 ---
 
-## 📌 这是什么
+##  这是什么
 
 一个用**摄像头和图片做视觉识别**的项目，能力分四大块：
 
 | 模块 | 能干什么 |
 |---|---|
-| 🔍 **识别** | 认图里的物体（80 类通用物体：人、车、狗、杯子…） |
-| 🧑 **认人** | 人脸识别：认出熟人、登记陌生人、抓拍留证 |
-| 💬 **对话** | 接 DeepSeek 大模型，用中文指挥它干活 |
-| 🏷️ **训练** | 自己打标签 → 训练专属模型 |
+|  **识别** | 认图里的物体（80 类通用物体：人、车、狗、杯子…） |
+|  **认人** | 人脸识别：认出熟人、登记陌生人、抓拍留证 |
+|  **对话** | 接 DeepSeek 大模型，用中文指挥它干活 |
+|  **训练** | 自己打标签 → 训练专属模型 |
 
 ### 什么是 Harness？
 
 **Harness** 是让 AI 程序**自动运行、自动决策**的那层框架。
 
-| 普通 AI 程序 | Harness 系统 |
-|---|---|
-| 手动跑一次就结束 | 启动后自动循环 |
-| 一次处理一张图 | 持续监控，自动发现新任务 |
-| 需要人盯着 | 自主运行 |
-| 只能识别 | 能调工具、存结果、自己决定下一步 |
+| Harness 系统 |
+|---|
+| 启动后自动循环 |
+| 持续监控，自动发现新任务 |
+| 自主运行 |
+| 能调工具、存结果、自己决定下一步 |
 
 本项目里 `agent.py` 的 **Agent Loop**（AI 自己决定调哪个工具）就是 harness 的核心。
 另外 `harness.py` / `harness_camera.py` 里的"定时循环"是更朴素的自动化外壳 ——
@@ -32,9 +32,9 @@
 
 ---
 
-## 🎯 四个入口
+##  四个入口
 
-### 1️⃣ 命令行主程序 `agent.py`（推荐入口）
+### 1. 命令行主程序 `agent.py`（推荐入口）
 
 ```bash
 python agent.py
@@ -56,7 +56,7 @@ python agent.py
 * 敲中文 → 交给 AI，它自己决定调哪个工具
 * 输入 `菜单` → 随时调出菜单
 
-### 2️⃣ 图形界面版 `camera_gui.py`（摄像头 + 对话）
+### 2. 图形界面版 `camera_gui.py`（摄像头 + 对话）
 
 双击 **`启动摄像头窗口.bat`**（不弹黑框）。
 
@@ -67,7 +67,7 @@ python agent.py
 
 窗口左下角还能**实时调物体识别**：开关、换模型（yolov8n / yolov8s / yolo11s）、改分辨率，选择会被记住。
 
-### 3️⃣ 打标签 `label_gui.py`
+### 3. 打标签 `label_gui.py`
 
 双击 **`启动打标签.bat`**，给训练准备数据。
 
@@ -77,7 +77,7 @@ python agent.py
 
 存的格式是标准 YOLO txt（`类别 中心x 中心y 宽 高`，都归一化到 0~1）。
 
-### 4️⃣ 训练 `train_model.py`
+### 4. 训练 `train_model.py`
 
 ```bash
 python train_model.py --check     # 只看数据准备得怎么样，不训练
@@ -92,7 +92,7 @@ python train_model.py --resume    # 断了接着跑
 
 ---
 
-## 🛠️ 环境准备
+##  环境准备
 
 ### 1. 装依赖
 
@@ -130,7 +130,7 @@ https://media.githubusercontent.com/media/opencv/opencv_zoo/main/models/face_det
 https://media.githubusercontent.com/media/opencv/opencv_zoo/main/models/face_recognition_sface/face_recognition_sface_2021dec.onnx
 ```
 
-> 注：`raw.githubusercontent.com` 在国内常连不上，用上面的 `media.` 域名。
+
 
 ### 4. DeepSeek 密钥
 
@@ -140,7 +140,7 @@ https://media.githubusercontent.com/media/opencv/opencv_zoo/main/models/face_rec
 DEEPSEEK_API_KEY=你的密钥
 ```
 
-`.env` 已在 `.gitignore` 里，不会被提交。
+`.env` 已在 `.gitignore` 里，没提交。
 
 ---
 
@@ -219,7 +219,7 @@ yolo_test/
 
 ---
 
-## 🧠 设计上的几个坑（踩过才写进来）
+##  设计上的几个坑（踩过才写进来。。。）
 
 1. **AI 会跟自己的旧话保持一致** —— 如果记忆里存着它说"我没有记忆"，它之后会一直这么说。
    所以被污染的记忆必须清掉，光改提示词没用。
