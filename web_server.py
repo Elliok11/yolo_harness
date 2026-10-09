@@ -247,8 +247,15 @@ class Handler(BaseHTTPRequestHandler):
             if not sess or sess.get("session") is None:
                 self._json({"error": "AI 会话没初始化（检查 agent.py 的配置）"}, 500)
                 return
+
+            # ★ 关键：把「摄像头此刻的情况」一并交给模型。
+            #
+            # 不传的话，模型手里只有用户的文字，它会老实回答「我看不到实时画面」——
+            # 这不是它笨，是我们没给它画面。
+            # 这里把画面里有什么（人脸数、识别到的物体、脸库情况）拼成一段文字塞进去。
+            ctx = self._camera_context()
             try:
-                reply, _trace = sess["session"].ask(msg)
+                reply, _trace = sess["session"].ask(msg, extra_context=ctx)
                 self._json({"reply": reply})
             except Exception as exc:
                 self._json({"error": str(exc)[:300]}, 500)
@@ -274,6 +281,46 @@ class Handler(BaseHTTPRequestHandler):
             return
 
         self.send_error(404, "Not Found")
+
+    def _camera_context(self):
+        """把摄像头此刻的状态拼成一段话，交给模型当上下文
+
+        为什么要这么做？
+          模型本身看不到画面。它只有拿到「画面里现在有什么」这段描述，
+          才可能回答「画面里有几个人」这类问题。
+          不传这段，它只会老实说「我无法查看实时画面」—— 那是实话，但不是我们想要的。
+        """
+        w = self.worker
+        if w is None:
+            return "摄像头未启动（后端以 --no-camera 运行）"
+        st = w.stats
+        if not st.get("camera_ok"):
+            return "摄像头打不开：%s" % st.get("message", "未知原因")
+
+        parts = []
+        parts.append("画面里有 %d 张人脸" % st.get("faces", 0))
+        if st.get("known"):
+            who = []
+            if w.tracker:
+                for pid in w.tracker.session.keys():
+                    p = next((x for x in w.tracker.library.people if x["id"] == pid), None)
+                    who.append("%s(第%d次见)" % (pid, p.get("times_seen", 0)) if p else pid)
+            if who:
+                parts.append("认出：%s" % "、".join(who))
+            else:
+                parts.append("脸库里已有 %d 人，当前画面里的人还没被认出" % st["known"])
+        if st.get("pending"):
+            parts.append("有 %d 张脸还在投票确认中" % st["pending"])
+
+        objs = st.get("objects") or []
+        if objs:
+            from collections import Counter
+            c = Counter(o["name"] for o in objs)
+            parts.append("物体识别到：" + "、".join("%s×%d" % (k, v) for k, v in c.items()))
+        else:
+            parts.append("未开启物体识别（只能人脸信息）")
+
+        return "；".join(parts) + "。如果用户问画面里有什么，就基于这段描述回答，不要说你无法查看实时画面。"
 
     def _stream_video(self):
         """MJPEG 视频流：一次连接，持续推帧

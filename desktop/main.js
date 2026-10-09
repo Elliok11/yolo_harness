@@ -66,6 +66,15 @@ function startBackend() {
   if (process.env.DESKTOP_NO_CAMERA === "1") {
     args.push("--no-camera");
     console.log("[desktop] DESKTOP_NO_CAMERA=1，本次不开摄像头");
+  } else {
+    // 同时开物体识别。不开的话，问「画面里有什么」只能答出人脸，
+    // 答不出杯子、键盘这类物体 —— 而「分析画面」这个按钮显然期待物体信息。
+    // 代价是更吃 CPU（帧率会降），设 DESKTOP_FAST=1 可以关掉换流畅。
+    if (process.env.DESKTOP_FAST === "1") {
+      console.log("[desktop] DESKTOP_FAST=1，跳过物体识别（更流畅，但只能识别人脸）");
+    } else {
+      args.push("--objects");
+    }
   }
   pyProc = spawn(py, args, {
     cwd: root,
