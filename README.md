@@ -330,28 +330,54 @@ DEEPSEEK_API_KEY=你的密钥
 
 ```
 yolo_test/
-├── agent.py               # 主程序：菜单 + AI 聊天 + Agent Loop
-├── camera_gui.py          # 图形界面：摄像头 + 人脸 + 对话
-├── chat_agent.py          # 界面与 AI 之间的接线层
-├── face_tools.py          # 人脸识别（检测/认人/脸库）
-├── label_data.py          # 打标签的数据层（YOLO 格式读写）
-├── label_gui.py           # 打标签窗口
-├── train_model.py         # 训练程序
-├── yolo_tools.py          # AI 可调用的工具集
-├── detect.py              # 最早的批量识别脚本
-├── harness.py             # 文件夹监控（定时循环）
-├── harness_camera.py      # 摄像头监控（定时循环）
-├── main.py                # 最早的菜单启动器
-├── 启动摄像头窗口.bat       # 双击启动图形界面
-├── 启动打标签.bat           # 双击启动打标签
-├── models/                # 人脸模型（需自行下载，已 gitignore）
-├── labels/                # 打标签结果（已 gitignore）
-├── images/                # 输入图片（已 gitignore）
-├── output_results/        # 识别输出、脸库、对话记忆（已 gitignore）
-└── logs/                  # 运行日志、决策留痕（已 gitignore）
+│
+├── 【入口程序】
+│   ├── agent.py                        # 主程序：菜单 + AI 聊天 + Agent Loop（三种模型后端）
+│   ├── camera_gui.py                   # 图形界面：摄像头 + 人脸识别 + 对话
+│   ├── label_gui.py                    # 打标签窗口
+│   ├── create_workflow.py              # 用 API 在 n8n 里创建/更新工作流
+│   ├── train_model.py                  # 训练程序
+│   ├── detect.py                       # 最早的批量识别脚本
+│   ├── harness.py                      # 文件夹监控（定时循环）
+│   ├── harness_camera.py               # 摄像头监控（定时循环）
+│   └── main.py                         # 最早的菜单启动器
+│
+├── 【模块】
+│   ├── chat_agent.py                   # 界面与 AI 之间的接线层
+│   ├── face_tools.py                   # 人脸识别（检测/认人/脸库）
+│   ├── label_data.py                   # 打标签的数据层（YOLO 格式读写）
+│   └── yolo_tools.py                   # AI 可调用的 9 个工具
+│
+├── 【双击启动】（不用记命令）
+│   ├── 启动Ollama服务.bat               # 启动本地大模型（已含必要环境设置）
+│   ├── 启动n8n.bat                      # 启动 n8n 编排平台
+│   ├── 启动摄像头窗口.bat / _调试.bat    # 图形界面版
+│   └── 启动打标签.bat / _调试.bat        # 打标签工具
+│
+├── 【文档】
+│   ├── README.md                       # 本文件
+│   └── docs/
+│       ├── 工程日志.md                  # 开发过程与 11 个真实踩坑
+│       └── AI使用说明.md                # AI 参与情况（如实说明）
+│
+├── 【进仓库的配置】
+│   └── n8n_workflows/local_llm_agent.json   # n8n 工作流定义（可复现）
+│
+└── 【不进仓库、需要自己准备的】
+    ├── venv/            # Python 虚拟环境（1156 MB，别人自己建）
+    ├── models/          # 人脸模型 onnx（37 MB，需自行下载）
+    ├── images/          # 图片素材（含 coco/ 归档目录）
+    ├── labels/          # 打标签结果
+    ├── output_results/  # 识别输出、脸库、对话记忆
+    └── logs/            # 运行日志、决策留痕
 ```
 
-**注意：图片、模型、数据集都不在仓库里**，需要自己准备。
+**仓库里只跟踪 24 个文件、约 246 KB**，全是代码和文档。
+图片、模型、虚拟环境、运行产物一律不进 git（`.gitignore` 已排除）。
+
+> 📌 目前 `images/` 是空的，`images/coco/` 里有 15 张 COCO 样例图。
+> `detect.py` 和菜单第 1 项扫的是 `images/` **根目录**，
+> 想直接跑批量识别的话，把图放进 `images/` 根目录即可。
 
 ---
 

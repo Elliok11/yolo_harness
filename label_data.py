@@ -26,8 +26,12 @@ DATASET_ROOT = "dataset"       # 训练数据集（train/val 划分）也放这
 CLASSES_FILE = os.path.join(LABEL_ROOT, "classes.txt")
 
 # 扫描素材时看这些目录
+# 注意：glob 不递归子目录，所以素材放进子目录后要把路径也列在这里，
+# 否则打标签工具会「看不到图」。images/coco 是为了让项目根目录保持整洁
+# 而做的归档目录。
 SCAN_DIRS = [
     "images",
+    os.path.join("images", "coco"),
     "output_results",
     os.path.join("output_results", "new_faces"),
     "label_images",            # 你自己丢新图进来的地方
