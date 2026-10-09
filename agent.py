@@ -38,12 +38,13 @@ import yolo_tools
 load_dotenv()
 
 # ==================== 大模型 Provider 配置 ====================
-# 支持两种后端，用环境变量 LLM_PROVIDER 切换：
+# 支持三种后端，用环境变量 LLM_PROVIDER 或命令行 --provider 切换：
 #
 #   local  —— 本地 Ollama（默认）。完全离线、不花钱、数据不出本机。
-#             前提：装好 Ollama 并拉过模型，例如
-#                 ollama pull qwen2.5:1.5b
+#             前提：装好 Ollama 并拉过模型，例如 ollama pull qwen2.5:1.5b
 #   cloud  —— DeepSeek 云端 API。更强，但需要联网和 API Key。
+#   n8n    —— 经 n8n 编排平台中转（任务一.2 要求的"通过 API 接入应用"）。
+#             请求路径变成：agent.py → n8n Webhook → n8n HTTP 节点 → 本地 Ollama
 #
 # 实测（本机 qwen2.5:1.5b）：普通对话 2.2 秒，带工具调用 5.1 秒，支持 function calling。
 #
@@ -58,6 +59,11 @@ _PROVIDERS = {
     "cloud": {"base_url": "https://api.deepseek.com",
               "api_key": os.getenv("DEEPSEEK_API_KEY") or "",
               "model": "deepseek-chat", "label": "DeepSeek 云端"},
+    "n8n": {"base_url": os.getenv("N8N_BASE_URL") or "http://127.0.0.1:5678",
+            "api_key": os.getenv("N8N_API_KEY") or "",
+            "model": os.getenv("OLLAMA_MODEL") or "qwen2.5:1.5b",
+            "label": "n8n 中转",
+            "webhook": os.getenv("N8N_WEBHOOK_PATH") or "agent"},
 }
 
 # 命令行 --provider / --model
@@ -80,12 +86,141 @@ API_KEY = os.getenv("LLM_API_KEY") or _cfg["api_key"]
 MODEL_NAME = _arg("--model") or os.getenv("LLM_MODEL") or _cfg["model"]
 PROVIDER_LABEL = _cfg["label"] + ("（自定义地址）" if BASE_URL != _cfg["base_url"] else "")
 
-client = OpenAI(api_key=API_KEY or "not-needed", base_url=BASE_URL)
+
+class _N8nClient:
+    """把 n8n 的 Webhook 包装成「看起来像 OpenAI 客户端」
+
+    为什么要做包装？
+      这样 run_agent_turn 里那行 client.chat.completions.create(...) 一个字都不用改，
+      三种后端共用同一段代码 —— 换后端只是换一个对象。
+
+    代价（重要）：
+      n8n 那条工作流是【纯文本】接口，接收 {"message": "..."}，返回模型回复。
+      它没有工具调用的能力，所以 n8n 模式下：
+        · 可以正常聊天问答
+        · 不能调用 list_images / detect_objects 等工具
+      这不是偷懒，而是这条路的真实边界 —— 详细讨论见 docs/工程日志.md
+    """
+
+    def __init__(self, base, webhook_path, model, timeout=300):
+        self.webhook_path = webhook_path
+        self.webhook_url = base.rstrip("/") + "/webhook/" + webhook_path.lstrip("/")
+        self.model = model
+        self.timeout = timeout
+        self.chat = self._Chat(self)
+
+    class _Chat:
+        def __init__(self, outer):
+            self.completions = _N8nClient._Completions(outer)
+
+    class _Completions:
+        def __init__(self, outer):
+            self.outer = outer
+
+        def create(self, model=None, messages=None, tools=None, **kwargs):
+            import urllib.request
+            import urllib.error
+
+            # 把 messages 拍平成一段文本；system 提示单独抽出来，因为 n8n 那边
+            # 已经写好了自己的 system 提示，不该重复塞
+            parts = []
+            for m in (messages or []):
+                role = m.get("role")
+                content = m.get("content")
+                if role == "system" or not content:
+                    continue
+                if role == "user":
+                    parts.append(str(content))
+                elif role == "assistant":
+                    parts.append("（我之前的回答）" + str(content))
+            prompt = "\n\n".join(parts[-6:]) or "你好"
+
+            payload = json.dumps({"message": prompt}).encode("utf-8")
+            req = urllib.request.Request(
+                self.outer.webhook_url, data=payload, method="POST",
+                headers={"Content-Type": "application/json"})
+            try:
+                with urllib.request.urlopen(req, timeout=self.outer.timeout) as r:
+                    raw = r.read().decode("utf-8", "replace")
+            except urllib.error.HTTPError as e:
+                detail = e.read().decode("utf-8", "replace")[:200]
+                if e.code == 404:
+                    raise RuntimeError(
+                        "n8n 的 Webhook 返回 404。常见原因：\n"
+                        "  1) 工作流没发布（在界面上点 Publish）\n"
+                        "  2) path 不对，当前用的是 '%s'\n"
+                        "  查一下：python create_workflow.py" % self.outer.webhook_path)
+                raise RuntimeError("n8n 返回 HTTP %d：%s" % (e.code, detail))
+            except Exception as exc:
+                raise RuntimeError(
+                    "连不上 n8n（%s）。请确认：\n"
+                    "  1) n8n 在跑（双击 启动n8n.bat）\n"
+                    "  2) 工作流已发布\n"
+                    "  3) 地址正确：%s" % (str(exc)[:80], self.outer.webhook_url))
+
+            try:
+                d = json.loads(raw)
+            except Exception:
+                raise RuntimeError("n8n 返回的不是 JSON：%s" % raw[:200])
+
+            # 工作流返回的是 Ollama 的原始响应，回复在 message.content
+            text = ""
+            if isinstance(d, dict):
+                text = ((d.get("message") or {}).get("content")
+                        or (d.get("choices") or [{}])[0].get("message", {}).get("content")
+                        or "")
+            if not text:
+                text = "（n8n 返回了空回复，原始内容：%s）" % raw[:150]
+
+            class _Msg:
+                def __init__(self, content):
+                    self.content = content
+                    self.tool_calls = None      # n8n 这条链路不支持工具调用
+                    self.role = "assistant"
+
+            class _Choice:
+                def __init__(self, m):
+                    self.message = m
+
+            class _Resp:
+                def __init__(self, m):
+                    self.choices = [_Choice(m)]
+                    self.usage = None
+
+            return _Resp(_Msg(text))
+
+
+if PROVIDER == "n8n":
+    client = _N8nClient(BASE_URL, _cfg["webhook"], MODEL_NAME)
+    # n8n 那条工作流一次只做一轮问答，没有工具循环，所以轮数上限压到 1
+    AGENT_MAX_ROUNDS_HINT = 1
+else:
+    client = OpenAI(api_key=API_KEY or "not-needed", base_url=BASE_URL)
+    AGENT_MAX_ROUNDS_HINT = None
 
 
 def provider_info():
-    """给界面/日志用的一句话说明，顺便在本地模式下探测 Ollama 是否在跑"""
+    """给界面/日志用的一句话说明，顺便做后端自检"""
     info = "模型后端：%s | 模型：%s | 地址：%s" % (PROVIDER_LABEL, MODEL_NAME, BASE_URL)
+
+    if PROVIDER == "n8n":
+        url = BASE_URL.rstrip("/") + "/webhook/" + _cfg["webhook"]
+        info += "\n   调用链：agent.py → n8n → 本地 Ollama"
+        info += "\n   Webhook：%s" % url
+        info += "\n   ⚠️ 这条链路只能聊天问答，**不支持工具调用**（n8n 工作流是纯文本接口）"
+        try:
+            import urllib.request
+            with urllib.request.urlopen(BASE_URL.rstrip("/") + "/healthz", timeout=8):
+                pass
+        except Exception:
+            try:
+                import urllib.request
+                urllib.request.urlopen(BASE_URL, timeout=8)
+            except Exception as exc:
+                info += "\n   ⚠️ 连不上 n8n（%s）" % str(exc)[:60]
+                info += "\n      请双击 启动n8n.bat，或用 python agent.py --provider local"
+        return info
+
     if PROVIDER == "local":
         try:
             models = [m.id for m in client.models.list().data]
