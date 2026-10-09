@@ -256,6 +256,13 @@ class Handler(BaseHTTPRequestHandler):
             ctx = self._camera_context()
             try:
                 reply, _trace = sess["session"].ask(msg, extra_context=ctx)
+                # 限制会话内的历史长度。
+                #
+                # 为什么必须限制？会话是常驻的，问得越多历史越长，
+                # 而 CPU 上让 1.5B 小模型啃长 prompt 会越来越慢 ——
+                # 实测 61 条消息（3.5 万字）时一次问答要 149 秒。
+                # 保留最近几轮就够维持上下文感，旧的不值得留着拖慢速度。
+                self._trim_session(sess["session"])
                 self._json({"reply": reply})
             except Exception as exc:
                 self._json({"error": str(exc)[:300]}, 500)
@@ -281,6 +288,29 @@ class Handler(BaseHTTPRequestHandler):
             return
 
         self.send_error(404, "Not Found")
+
+    # 会话里最多保留多少条消息（不含 system）。超了就从头丢。
+    # 太小会失去上下文感，太大会越问越慢 —— 8 条约等于最近 4 轮问答。
+    SESSION_KEEP = 8
+
+    @staticmethod
+    def _trim_session(session):
+        """把会话历史裁到最近 SESSION_KEEP 条，防止越问越慢
+
+        细节：裁剪时必须保证「tool 调用」和「tool 回复」不被拆散，
+        否则接口会报 400（这是我在 agent.py 里踩过的坑，见工程日志坑 2）。
+        这里用 agent 里那个已经写好的校验函数来兜底。
+        """
+        try:
+            msgs = session.messages
+            if len(msgs) <= Handler.SESSION_KEEP + 1:
+                return
+            head = msgs[:1]                     # system 永远留着
+            tail = msgs[1:][-Handler.SESSION_KEEP:]
+            import agent
+            session.messages = agent._drop_orphan_tool_messages(head + tail)
+        except Exception:
+            pass
 
     def _camera_context(self):
         """把摄像头此刻的状态拼成一段话，交给模型当上下文

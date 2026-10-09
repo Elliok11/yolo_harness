@@ -45,10 +45,30 @@ class AgentSession:
         """
         with self.lock:
             self.trace = []
-            content = text
+            # 摄像头状态【必须作为 system 消息】插入，不能拼在用户消息里。
+            #
+            # 为什么？我第一版是拼在用户消息里的（"问题\n\n【当前摄像头状态】…"），
+            # 测试时用全新会话能work，但真实使用中会失效 ——
+            # 因为对话历史里已经积累了模型自己说过的「我无法查看实时画面」。
+            # 模型最信的是它自己刚说过的话，一条夹在用户消息里的描述压不过它。
+            # 这就是工程日志【坑 1】记过的那个模式（AI 会跟自己的旧话保持一致）。
+            #
+            # 放在 system 角色里，权重高得多，而且明确下指令，才压得住。
             if extra_context:
-                content = "%s\n\n【当前摄像头状态】%s" % (text, extra_context)
-            self.messages.append({"role": "user", "content": content})
+                self.messages.append({
+                    "role": "system",
+                    "content": (
+                        "【摄像头实时数据 —— 已经取好了，你直接看就行】\n"
+                        "%s\n\n"
+                        "注意：上面这些数据是程序【刚刚】从摄像头实时取到的，"
+                        "已经在你手里了，不需要你去抓取或等待。\n"
+                        "回答要求：\n"
+                        "  1. 直接根据上面的数据回答，不要说你无法查看实时画面\n"
+                        "  2. 不要说『请稍等』『我这就去抓取』这类话 —— 数据已经在了\n"
+                        "  3. 用户问画面里有什么，就把上面的人脸和物体信息用自然语言说出来"
+                        % extra_context),
+                })
+            self.messages.append({"role": "user", "content": text})
             t0 = time.time()
             try:
                 reply = agent.run_agent_turn(self.messages, tool_map=self.tool_map)
