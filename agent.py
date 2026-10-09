@@ -37,10 +37,67 @@ import yolo_tools
 
 load_dotenv()
 
-client = OpenAI(
-    api_key=os.getenv("DEEPSEEK_API_KEY"),
-    base_url="https://api.deepseek.com"
-)
+# ==================== 大模型 Provider 配置 ====================
+# 支持两种后端，用环境变量 LLM_PROVIDER 切换：
+#
+#   local  —— 本地 Ollama（默认）。完全离线、不花钱、数据不出本机。
+#             前提：装好 Ollama 并拉过模型，例如
+#                 ollama pull qwen2.5:1.5b
+#   cloud  —— DeepSeek 云端 API。更强，但需要联网和 API Key。
+#
+# 实测（本机 qwen2.5:1.5b）：普通对话 2.2 秒，带工具调用 5.1 秒，支持 function calling。
+#
+# 也可以单独覆盖任意一项：
+#   LLM_BASE_URL / LLM_API_KEY / LLM_MODEL
+# 命令行覆盖（优先级最高）：
+#   python agent.py --provider cloud
+#   python agent.py --provider local --model qwen2.5:7b
+_PROVIDERS = {
+    "local": {"base_url": "http://127.0.0.1:11434/v1", "api_key": "ollama",
+              "model": "qwen2.5:1.5b", "label": "本地 Ollama"},
+    "cloud": {"base_url": "https://api.deepseek.com",
+              "api_key": os.getenv("DEEPSEEK_API_KEY") or "",
+              "model": "deepseek-chat", "label": "DeepSeek 云端"},
+}
+
+# 命令行 --provider / --model
+_cli = sys.argv[1:]
+def _arg(name):
+    if name in _cli:
+        i = _cli.index(name)
+        if i + 1 < len(_cli):
+            return _cli[i + 1]
+    return None
+
+PROVIDER = (_arg("--provider") or os.getenv("LLM_PROVIDER") or "local").strip().lower()
+if PROVIDER not in _PROVIDERS:
+    print("⚠️ 不认识的 provider：%s，回退到 local" % PROVIDER)
+    PROVIDER = "local"
+_cfg = _PROVIDERS[PROVIDER]
+
+BASE_URL = _arg("--base-url") or os.getenv("LLM_BASE_URL") or _cfg["base_url"]
+API_KEY = os.getenv("LLM_API_KEY") or _cfg["api_key"]
+MODEL_NAME = _arg("--model") or os.getenv("LLM_MODEL") or _cfg["model"]
+PROVIDER_LABEL = _cfg["label"] + ("（自定义地址）" if BASE_URL != _cfg["base_url"] else "")
+
+client = OpenAI(api_key=API_KEY or "not-needed", base_url=BASE_URL)
+
+
+def provider_info():
+    """给界面/日志用的一句话说明，顺便在本地模式下探测 Ollama 是否在跑"""
+    info = "模型后端：%s | 模型：%s | 地址：%s" % (PROVIDER_LABEL, MODEL_NAME, BASE_URL)
+    if PROVIDER == "local":
+        try:
+            models = [m.id for m in client.models.list().data]
+            if MODEL_NAME not in models:
+                info += "\n⚠️ Ollama 在跑，但没有 %s 这个模型。现有：%s" % (MODEL_NAME, models)
+                info += "\n   拉一个：ollama pull %s" % MODEL_NAME
+                info += "\n   或换用已有的：python agent.py --model %s" % (models[0] if models else "模型名")
+        except Exception as exc:
+            info += "\n⚠️ 连不上本地 Ollama（%s）" % str(exc)[:60]
+            info += "\n   请先启动 Ollama，或改用云端：python agent.py --provider cloud"
+    return info
+# ==============================================================
 
 # 系统提示词：告诉 AI 它是谁、能干什么、以及【它有记忆】这件关键事实
 SYSTEM_PROMPT = """你是一个视觉识别助手，代号"华小牛"。
@@ -810,9 +867,10 @@ TOOL_MAP = {
 
 def run_agent():
     print("=" * 60)
-    print("🤖 华小牛 已启动（DeepSeek 大脑 + YOLO 眼睛）")
-    print("   三种模式都装好了，另有 7 件工具供 AI 调用")
-    print("   敲 1/2/3 用菜单，敲中文直接聊天，敲 q 退出")
+    print("🤖 华小牛 已启动（%s 大脑 + YOLO 眼睛）" % PROVIDER_LABEL)
+    print("   " + provider_info().replace("\n", "\n   "))
+    print("   敲 1/2/3/4 用菜单，敲中文直接聊天，敲 q 退出")
+    print("   换了后端想清空记忆：删掉 %s" % MEMORY_FILE)
     print("=" * 60)
     print_menu()
 
@@ -939,7 +997,7 @@ def run_agent_turn(messages, tool_map=None):
             except Exception:
                 pass
         response = client.chat.completions.create(
-            model="deepseek-chat",
+            model=MODEL_NAME,
             messages=messages,
             tools=TOOLS,
         )

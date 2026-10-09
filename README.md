@@ -12,21 +12,31 @@
 |---|---|
 |  **识别** | 认图里的物体（80 类通用物体：人、车、狗、杯子…） |
 |  **认人** | 人脸识别：认出熟人、登记陌生人、抓拍留证 |
-|  **对话** | 接 DeepSeek 大模型，用中文指挥它干活 |
+|  **对话** | 接大模型，用中文指挥它干活（**默认走本地 Ollama**，也可切云端 DeepSeek） |
 |  **训练** | 自己打标签 → 训练专属模型 |
 
+### Harness 是什么
 
+Harness 是让 AI 程序**自动运行、自动决策**的那层框架。区别在于：
 
-| 特色 |
-|---|
-| 启动后自动循环 |
-| 持续监控，自动发现新任务 |
-| 自主运行 |
-| 能调工具、存结果、自己决定下一步 |
+| 普通 AI 程序 | Harness 系统 |
+|---|---|
+| 手动跑一次就结束 | 启动后自动循环 |
+| 一次处理一张图 | 持续监控，自动发现新任务 |
+| 需要人盯着 | 能自己决定下一步 |
+| 只能识别 | 能调工具、存结果、做判断 |
 
 本项目里 `agent.py` 的 **Agent Loop**（AI 自己决定调哪个工具）就是 harness 的核心。
 另外 `harness.py` / `harness_camera.py` 里的"定时循环"是更朴素的自动化外壳 ——
 两种"harness"含义不同，别混。
+
+### 项目文档
+
+| 文档 | 内容 |
+|---|---|
+| `README.md` | 你正在看的这份：怎么跑、怎么配 |
+| [`docs/工程日志.md`](docs/工程日志.md) | **开发过程与踩过的坑**（9 个真实问题：现象→排查→根因→解决） |
+| [`docs/AI使用说明.md`](docs/AI使用说明.md) | AI 参与情况与协作方式（如实说明） |
 
 ---
 
@@ -102,7 +112,55 @@ python train_model.py --resume    # 断了接着跑
 
 ##  环境准备
 
-### 1. 装依赖
+### 1. 大模型后端（二选一，默认本地）
+
+程序**默认使用本地 Ollama**，完全离线、不花钱、数据不出本机。
+想用云端 DeepSeek 也可以随时切，命令加一个参数即可。
+
+**方案 A：本地 Ollama（默认）**
+
+```bash
+# 1. 装 Ollama：https://ollama.com/download
+# 2. 拉一个支持工具调用的模型
+ollama pull qwen2.5:1.5b
+
+# 3. 什么都不用配，直接跑
+python agent.py
+```
+
+Ollama 自带 OpenAI 兼容接口（`http://127.0.0.1:11434/v1`），
+所以项目里用的还是标准的 `openai` 库，只是换了地址，没有引入新依赖。
+
+本机实测（qwen2.5:1.5b，无显卡）：普通对话 2.2 秒，
+**带工具调用的一轮 Agent 对话约 54 秒**。免费离线的代价就是慢。
+
+**方案 B：云端 DeepSeek**
+
+项目根目录建 `.env`：
+
+```
+DEEPSEEK_API_KEY=你的密钥
+```
+
+然后 `python agent.py --provider cloud`。`.env` 已在 `.gitignore` 里，不会被提交。
+
+**切换方式汇总**
+
+```bash
+python agent.py                            # 默认：本地 Ollama + qwen2.5:1.5b
+python agent.py --provider cloud           # 切云端 DeepSeek
+python agent.py --model qwen2.5:7b         # 换本地模型
+python agent.py --base-url http://x/v1     # 换任意 OpenAI 兼容地址
+```
+
+也可以用环境变量：`LLM_PROVIDER` / `LLM_MODEL` / `LLM_BASE_URL` / `LLM_API_KEY`。
+
+启动时程序会自检：**本地模型不存在、或 Ollama 没启动，它会直接告诉你该拉哪个模型、该启动什么**，
+而不是丢一个看不懂的报错出来。
+
+> 提示：本地小模型和云端大模型的差距是明显的。换了后端如果感觉回答变笨，那是正常的。
+
+### 2. 装依赖
 
 ```bash
 python -m venv venv
@@ -111,7 +169,7 @@ pip install ultralytics openai python-dotenv pandas seaborn tqdm
 
 ```
 
-### 2. 下载 YOLO 模型
+### 3. 下载 YOLO 模型
 
 程序会自动下载 `yolov8n.pt`。想更准可以手动下 `yolov8s.pt` / `yolo11s.pt` 放到项目根目录。
 
@@ -123,7 +181,7 @@ pip install ultralytics openai python-dotenv pandas seaborn tqdm
 | yolov8n | 960 | 77 | 44 |
 | **yolov8s** | **960** | **85（+55%）** | **46** |
 
-### 3. 人脸模型（要用认人功能才需要）
+### 4. 人脸模型（要用认人功能才需要）
 
 人脸识别用的是 **OpenCV 自带的** YuNet + SFace，不用装额外库，但要下两个模型文件放进 `models/`：
 
@@ -141,7 +199,7 @@ https://media.githubusercontent.com/media/opencv/opencv_zoo/main/models/face_rec
 
 
 
-### 4. DeepSeek 密钥
+### 5. DeepSeek 密钥（只在用云端时才需要）
 
 项目根目录建 `.env`：
 
