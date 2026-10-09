@@ -35,7 +35,7 @@ Harness 是让 AI 程序**自动运行、自动决策**的那层框架。区别�
 | 文档 | 内容 |
 |---|---|
 | `README.md` | 你正在看的这份：怎么跑、怎么配 |
-| [`docs/工程日志.md`](docs/工程日志.md) | **开发过程与踩过的坑**（9 个真实问题：现象→排查→根因→解决） |
+| [`docs/工程日志.md`](docs/工程日志.md) | **开发过程与 11 个真实踩坑**（现象→排查→根因→解决→教训） |
 | [`docs/AI使用说明.md`](docs/AI使用说明.md) | AI 参与情况与协作方式（如实说明） |
 
 ---
@@ -108,6 +108,49 @@ python train_model.py --resume    # 断了接着跑
 
 > ⚠️ **CPU 训练很慢**。参考：200 张图 × 100 轮，4 核 CPU 约 4~8 小时；有显卡则几十分钟。
 
+### 5. n8n 工作流版 `create_workflow.py`（图形化编排）
+
+除了自己写 Python 编排 Agent，这个项目**还用 n8n 搭了一条等价的路**，
+把本地大模型包成一个 HTTP 接口：
+
+```
+你的程序 ──POST {"message":"..."}──> n8n Webhook ──> HTTP Request ──> 本地 Ollama
+                                          ↑                              │
+                                          └──────── 回答原路返回 ─────────┘
+```
+
+**两条命令就能重建整个工作流**（工作流定义以 JSON 存在仓库里，不依赖界面手点）：
+
+```bash
+python create_workflow.py           # 创建（已存在则更新）
+python create_workflow.py --delete  # 删掉
+```
+
+**怎么调用它**（Python 示例）：
+
+```python
+import requests
+
+r = requests.post("http://127.0.0.1:5678/webhook/agent",
+                  json={"message": "用一句话介绍你自己"},
+                  timeout=300)
+print(r.json()["message"]["content"])
+```
+
+实测响应时间：首次 3.4 秒（模型要加载），之后稳定 **1.5 秒**。
+
+**为什么用代码建工作流而不是在界面上点？**
+
+| | 界面点出来 | 代码建（本项目） |
+|---|---|---|
+| 存在哪 | n8n 的数据库里，别人看不到 | **JSON 进 git，可 diff** |
+| 别人能否复现 | ❌ | ✅ 跑一条命令就行 |
+
+**需要的环境**：n8n 服务在跑（双击 `启动n8n.bat`），Ollama 服务在跑（双击 `启动Ollama服务.bat`），
+并且 `.env` 里填好 `N8N_API_KEY`（在 n8n 界面 → Settings → n8n API 里创建）。
+
+工作流定义文件：`n8n_workflows/local_llm_agent.json`
+
 ---
 
 ##  环境准备
@@ -124,9 +167,17 @@ python train_model.py --resume    # 断了接着跑
 # 2. 拉一个支持工具调用的模型
 ollama pull qwen2.5:1.5b
 
-# 3. 什么都不用配，直接跑
+# 3. 启动服务（Windows 用项目里的启动器，它带了必要的环境设置）
+#    双击：启动Ollama服务.bat
+#    或者手动：ollama serve
+
+# 4. 什么都不用配，直接跑
 python agent.py
 ```
+
+> ⚠️ **如果你有 AMD 老显卡，必须关掉 Vulkan 再启动**，否则推理会崩（报 `0xc0000005`）。
+> 项目里的 `启动Ollama服务.bat` 已经带上了 `set OLLAMA_VULKAN=false`，用它启动即可。
+> 原因见 [工程日志 · 坑 10](docs/工程日志.md)。
 
 Ollama 自带 OpenAI 兼容接口（`http://127.0.0.1:11434/v1`），
 所以项目里用的还是标准的 `openai` 库，只是换了地址，没有引入新依赖。

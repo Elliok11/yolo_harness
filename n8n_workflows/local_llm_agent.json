@@ -1,0 +1,58 @@
+{
+  "name": "本地大模型接口 (Ollama)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "agent",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "webhook-node",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        0
+      ],
+      "webhookId": "agent-webhook"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://127.0.0.1:11434/api/chat",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ {\n  model: 'qwen2.5:1.5b',\n  stream: false,\n  messages: [\n    { role: 'system', content: '你是一个视觉识别助手，代号华小牛。回答要简洁、口语化，用中文。' },\n    { role: 'user', content: $json.body.message }\n  ]\n} }}",
+        "options": {
+          "timeout": 300000
+        }
+      },
+      "id": "ollama-node",
+      "name": "问 Ollama",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        220,
+        0
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "问 Ollama",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}
