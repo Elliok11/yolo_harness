@@ -59,7 +59,15 @@ function startBackend() {
   }
 
   console.log(`[desktop] 启动后端：${py} ${script}`);
-  pyProc = spawn(py, [script, "--port", String(PORT), "--no-camera"], {
+  const args = [script, "--port", String(PORT)];
+  // 默认开摄像头。设 DESKTOP_NO_CAMERA=1 可以临时关掉（没摄像头时调试用）。
+  // 注意：早期版本这里写死了 --no-camera，导致界面里永远是一片黑 —— 那是个 bug，
+  // 摄像头明明可用却被自己禁掉了。
+  if (process.env.DESKTOP_NO_CAMERA === "1") {
+    args.push("--no-camera");
+    console.log("[desktop] DESKTOP_NO_CAMERA=1，本次不开摄像头");
+  }
+  pyProc = spawn(py, args, {
     cwd: root,
     windowsHide: true,           // 不弹黑框
     env: { ...process.env, PYTHONIOENCODING: "utf-8" },
