@@ -1,0 +1,14 @@
+{
+  "name": "huaxiaoniu-desktop",
+  "version": "1.0.0",
+  "description": "华小牛视觉识别工作台 - 桌面应用外壳",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron ."
+  },
+  "author": "yolo_test",
+  "license": "MIT",
+  "devDependencies": {
+    "electron": "^44.0.0"
+  }
+}

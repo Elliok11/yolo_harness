@@ -1,4 +1,4 @@
-#  YOLO Harness — 自动化视觉识别 + 人脸识别 + 打标签训练
+﻿#  YOLO Harness — 自动化视觉识别 + 人脸识别 + 打标签训练
 
 > 基于 YOLOv8n 的视觉识别系统。既能让 AI 自动、持续地跑，也能自己标数据训练专属模型。
 
@@ -35,12 +35,12 @@ Harness 是让 AI 程序**自动运行、自动决策**的那层框架。区别�
 | 文档 | 内容 |
 |---|---|
 | `README.md` | 你正在看的这份：怎么跑、怎么配 |
-| [`docs/工程日志.md`](docs/工程日志.md) | **开发过程与 11 个真实踩坑**（现象→排查→根因→解决→教训） |
+| [`docs/工程日志.md`](docs/工程日志.md) | **开发过程与 13 个真实踩坑**（现象→排查→根因→解决→教训） |
 | [`docs/AI使用说明.md`](docs/AI使用说明.md) | AI 参与情况与协作方式（如实说明） |
 
 ---
 
-##  四个入口
+##  五个入口
 
 命令符快速开始：
 ```bash
@@ -49,6 +49,15 @@ cd desktop/yolo_test
 venv\Scripts\activate
 
 ```
+
+> 💡 **只想最快看到东西**：双击 **`启动桌面应用.bat`**（需要先双击 `启动Ollama服务.bat`）。
+> 下面按从简到繁列出全部入口。
+
+### 0. 桌面应用 `desktop/`（推荐，最像成品）
+
+双击 **`启动桌面应用.bat`** → 弹出独立窗口，左边摄像头画面、右边跟 AI 聊天。
+
+见 [第 6 节](#6-桌面应用版electron-desktop)。
 
 ### 1. 命令行主程序 `agent.py`（推荐入口）
 
@@ -150,6 +159,69 @@ print(r.json()["message"]["content"])
 并且 `.env` 里填好 `N8N_API_KEY`（在 n8n 界面 → Settings → n8n API 里创建）。
 
 工作流定义文件：`n8n_workflows/local_llm_agent.json`
+
+### 6. 桌面应用版（Electron）`desktop/`
+
+双击 **`启动桌面应用.bat`** —— 会弹出一个**独立的桌面窗口**，不是浏览器标签页。
+
+```
+┌─────────────────────────────────────────────┐
+│  华小牛 视觉识别工作台        local/qwen2.5 │
+├──────────────────┬──────────────────────────┤
+│                  │  聊天记录…               │
+│   摄像头实时画面  │                          │
+│  （含人脸框）     │  [分析画面][现在有谁]     │
+│                  │  [存图][清屏]            │
+├──────────────────┤                          │
+│ 人脸 脸库 投票 帧率│  [输入框…][发送]         │
+└──────────────────┴──────────────────────────┘
+```
+
+**架构**（这是"桌面应用内嵌"的标准做法）：
+
+```
+Electron 窗口（桌面外壳）
+      │  加载 http://127.0.0.1:8765
+      ▼
+web_server.py（Python 后端，标准库 http.server）
+      ├── /video   MJPEG 视频流（浏览器 <img> 直接就能显示）
+      ├── /stats   人脸数、脸库人数、帧率
+      ├── /chat    转发给 AI
+      └── /snapshot 存图
+```
+
+**这套东西零额外依赖**：
+- 后端**没有用 FastAPI/Flask**，只用 Python 标准库（这台机器网络差，能少装就少装）
+- 界面是**纯 HTML/CSS/JS，没有框架、没有构建步骤**，Electron 直接加载
+
+**Electron 只用于"包装"** —— 它干的事就是开窗口 + 顺手拉起 Python 后端，
+关闭窗口时把后端一起收掉，不留后台进程。
+
+**单独运行后端**（不用 Electron，直接用浏览器看也行）：
+
+```bash
+python web_server.py                    # 默认 127.0.0.1:8765
+python web_server.py --open             # 启动后自动开浏览器
+python web_server.py --camera 1         # 指定摄像头编号
+python web_server.py --objects          # 同时跑物体识别（吃 CPU）
+python web_server.py --with-memory      # 带上命令行那边的对话记忆（会明显变慢）
+```
+
+> ⚠️ **性能提示**：默认**不带**对话记忆。因为 `agent_memory.json` 会累积大量
+> 工具调用的原始结果（实测 61 条消息 = 3.5 万字 ≈ 1.7 万 tokens），
+> 在 CPU 上让 1.5B 的小模型啃这么长的 prompt，**一次问答要 149 秒**；
+> 不带历史只要 **2~4 秒**。差 40 倍。
+
+**桌面应用需要的环境**：
+
+```bash
+cd desktop
+npm install --registry=https://registry.npmmirror.com
+```
+
+> Electron 的二进制约 151 MB，走国内镜像几秒就能下完（官方源会超时）。
+> 另外启动器里会清掉 `ELECTRON_RUN_AS_NODE` 这个环境变量 ——
+> 它会让 Electron 退化成纯 Node 模式，窗口起不来（报 `app` is undefined）。
 
 ---
 
@@ -333,7 +405,8 @@ yolo_test/
 │
 ├── 【入口程序】
 │   ├── agent.py                        # 主程序：菜单 + AI 聊天 + Agent Loop（三种模型后端）
-│   ├── camera_gui.py                   # 图形界面：摄像头 + 人脸识别 + 对话
+│   ├── web_server.py                   # 本地 Web 服务（桌面应用的后端，零额外依赖）
+│   ├── camera_gui.py                   # 图形界面（tkinter 版）：摄像头 + 人脸识别 + 对话
 │   ├── label_gui.py                    # 打标签窗口
 │   ├── create_workflow.py              # 用 API 在 n8n 里创建/更新工作流
 │   ├── train_model.py                  # 训练程序
@@ -348,16 +421,26 @@ yolo_test/
 │   ├── label_data.py                   # 打标签的数据层（YOLO 格式读写）
 │   └── yolo_tools.py                   # AI 可调用的 9 个工具
 │
+├── 【桌面应用】（Electron 外壳）
+│   ├── desktop/
+│   │   ├── main.js                     # 开窗口 + 拉起 Python 后端 + 关窗时收进程
+│   │   └── package.json                # 只有一个依赖：electron
+│   └── web/                            # 界面（纯 HTML/CSS/JS，无框架无构建）
+│       ├── index.html
+│       ├── style.css
+│       └── app.js
+│
 ├── 【双击启动】（不用记命令）
+│   ├── 启动桌面应用.bat                  # ⭐ 桌面窗口（推荐）
 │   ├── 启动Ollama服务.bat               # 启动本地大模型（已含必要环境设置）
 │   ├── 启动n8n.bat                      # 启动 n8n 编排平台
-│   ├── 启动摄像头窗口.bat / _调试.bat    # 图形界面版
+│   ├── 启动摄像头窗口.bat / _调试.bat    # tkinter 图形界面版
 │   └── 启动打标签.bat / _调试.bat        # 打标签工具
 │
 ├── 【文档】
 │   ├── README.md                       # 本文件
 │   └── docs/
-│       ├── 工程日志.md                  # 开发过程与 11 个真实踩坑
+│       ├── 工程日志.md                  # 开发过程与 13 个真实踩坑
 │       └── AI使用说明.md                # AI 参与情况（如实说明）
 │
 ├── 【进仓库的配置】
@@ -365,6 +448,7 @@ yolo_test/
 │
 └── 【不进仓库、需要自己准备的】
     ├── venv/            # Python 虚拟环境（1156 MB，别人自己建）
+    ├── desktop/node_modules/  # Electron（380 MB，npm install 自己装）
     ├── models/          # 人脸模型 onnx（37 MB，需自行下载）
     ├── images/          # 图片素材（含 coco/ 归档目录）
     ├── labels/          # 打标签结果

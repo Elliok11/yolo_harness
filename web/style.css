@@ -1,0 +1,183 @@
+/* 视觉识别工作台 —— 样式
+   保持简单：深色界面，左边视频右边聊天，小屏幕自动上下排列。 */
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: "Microsoft YaHei", "PingFang SC", system-ui, sans-serif;
+  background: #14161a;
+  color: #e6e8eb;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 16px;
+  background: #1c1f25;
+  border-bottom: 1px solid #2a2f38;
+  flex-shrink: 0;
+}
+
+h1 { margin: 0; font-size: 17px; font-weight: 600; }
+h1 .sub { font-size: 12px; font-weight: 400; color: #8b93a1; margin-left: 6px; }
+.provider { font-size: 12px; color: #7dd3a0; font-family: Consolas, monospace; }
+
+main {
+  flex: 1;
+  display: flex;
+  gap: 12px;
+  padding: 12px;
+  min-height: 0;
+}
+
+/* ---------- 左侧 ---------- */
+.left {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.video-wrap {
+  position: relative;
+  background: #000;
+  border: 1px solid #2a2f38;
+  border-radius: 8px;
+  overflow: hidden;
+  line-height: 0;
+}
+
+#video {
+  display: block;
+  width: 640px;
+  max-width: 46vw;
+  height: auto;
+}
+
+.cammsg {
+  position: absolute;
+  inset: 0;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 20px;
+  font-size: 13px;
+  color: #ffb4b4;
+  background: rgba(0, 0, 0, .72);
+  line-height: 1.6;
+}
+
+.stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+
+.stat {
+  background: #1c1f25;
+  border: 1px solid #2a2f38;
+  border-radius: 6px;
+  padding: 8px 6px;
+  text-align: center;
+}
+
+.stat span {
+  display: block;
+  font-size: 20px;
+  font-weight: 600;
+  font-family: Consolas, monospace;
+  color: #7dd3a0;
+}
+
+.stat label { font-size: 11px; color: #8b93a1; }
+
+.objects {
+  background: #1c1f25;
+  border: 1px solid #2a2f38;
+  border-radius: 6px;
+  padding: 8px 10px;
+  font-size: 12px;
+  color: #b9c0cb;
+  max-height: 90px;
+  overflow-y: auto;
+  line-height: 1.7;
+}
+
+.objects:empty { display: none; }
+
+/* ---------- 右侧 ---------- */
+.right {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+
+.chat {
+  flex: 1;
+  overflow-y: auto;
+  background: #1c1f25;
+  border: 1px solid #2a2f38;
+  border-radius: 8px;
+  padding: 12px;
+  font-size: 13.5px;
+  line-height: 1.65;
+  min-height: 0;
+}
+
+.msg { margin-bottom: 12px; }
+.msg .who { font-size: 11px; color: #8b93a1; margin-bottom: 3px; }
+.msg .body { white-space: pre-wrap; word-break: break-word; }
+
+.msg.user .body  { color: #8ab4f8; }
+.msg.ai .body    { color: #a5d6a7; }
+.msg.sys .body   { color: #d7c07a; font-size: 12.5px; }
+.msg.alert .body { color: #ff8a80; }
+
+.buttons { display: flex; gap: 6px; flex-wrap: wrap; }
+
+button {
+  background: #262b33;
+  color: #e6e8eb;
+  border: 1px solid #363c47;
+  border-radius: 6px;
+  padding: 7px 12px;
+  font-size: 13px;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background .12s;
+}
+
+button:hover:not(:disabled) { background: #313742; }
+button:disabled { opacity: .45; cursor: not-allowed; }
+
+.inputrow { display: flex; gap: 8px; }
+
+#input {
+  flex: 1;
+  background: #1c1f25;
+  border: 1px solid #2a2f38;
+  border-radius: 6px;
+  padding: 10px 12px;
+  color: #e6e8eb;
+  font-size: 13.5px;
+  font-family: inherit;
+}
+
+#input:focus { outline: none; border-color: #4a90d9; }
+#send { background: #2b5f8f; border-color: #3773a8; }
+#send:hover:not(:disabled) { background: #346ea3; }
+
+/* 窄屏：上下排 */
+@media (max-width: 900px) {
+  main { flex-direction: column; }
+  #video { width: 100%; max-width: none; }
+}

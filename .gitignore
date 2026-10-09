@@ -38,6 +38,14 @@ train_runs/
 Thumbs.db
 Desktop.ini
 
+# Node / Electron（desktop/ 目录）
+# 只提交 main.js 和 package.json 这两个描述文件；
+# node_modules 里 electron 解压后 367MB，加上下载缓存 151MB，绝不能进 git。
+node_modules/
+desktop/node_modules/
+desktop/package-lock.json
+desktop/dist/
+
 build/
 dist/
 *.spec

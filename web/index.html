@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>华小牛 · 视觉识别工作台</title>
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+
+<header>
+  <h1>华小牛 <span class="sub">视觉识别工作台</span></h1>
+  <div id="provider" class="provider">连接中…</div>
+</header>
+
+<main>
+  <!-- 左：视频 -->
+  <section class="left">
+    <div class="video-wrap">
+      <img id="video" src="/video" alt="摄像头画面">
+      <div id="cammsg" class="cammsg"></div>
+    </div>
+    <div class="stats">
+      <div class="stat"><span id="s-faces">-</span><label>画面人脸</label></div>
+      <div class="stat"><span id="s-known">-</span><label>脸库人数</label></div>
+      <div class="stat"><span id="s-pending">-</span><label>投票中</label></div>
+      <div class="stat"><span id="s-fps">-</span><label>帧率</label></div>
+    </div>
+    <div id="objects" class="objects"></div>
+  </section>
+
+  <!-- 右：聊天 -->
+  <section class="right">
+    <div id="chat" class="chat"></div>
+
+    <div class="buttons">
+      <button data-say="请看看我摄像头当前的画面里有什么。">🤖 分析画面</button>
+      <button data-act="who">👥 现在有谁</button>
+      <button data-act="snapshot">📷 存图</button>
+      <button data-act="clear">🧹 清屏</button>
+    </div>
+
+    <div class="inputrow">
+      <input id="input" type="text" placeholder="打字问点什么…（回车发送）" autocomplete="off">
+      <button id="send">发送</button>
+    </div>
+  </section>
+</main>
+
+<script src="/app.js"></script>
+</body>
+</html>
